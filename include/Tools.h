@@ -30,7 +30,7 @@ struct ParamsK
   }
 };
 
-void getPlaneOrientation2 (Mat &scenePts, Mat &imagePts, Point3f &N, double &D)
+void getPlaneOrientation2 (Mat &scenePts, Mat &imagePts, Point3f &N, double &D, Mat& Rnew, Mat& Tnew)
 {
     Mat H, R, R1, R2, R3, T, Nm, scPt;
     double n;
@@ -73,6 +73,8 @@ void getPlaneOrientation2 (Mat &scenePts, Mat &imagePts, Point3f &N, double &D)
     R3 = R1.cross(R2);
     hconcat (R1, R2, R2);
     hconcat (R2, R3, R);
+    R.copyTo(Rnew);
+    T.copyTo(Tnew);
     
 
     //La normal al plano está dada por el eje Z (i.e. [0,0,1]^T) en

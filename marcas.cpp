@@ -11,6 +11,7 @@
 #include "time.h"
 #include <opencv2/highgui/highgui.hpp>
 #include <Tools.h>
+#include <Tools2.h>
 
 #define HD 0
 #define FULL_HD 1
@@ -102,10 +103,10 @@ imgPts=(Mat_<double>(3, nP) <<P[0].x, P[1].x, P[2].x, P[3].x, P[4].x, P[5].x, P[
                                     0., 0., 0., 0., 
                                     1., 1., 1., 1.);*/
     //CLIR2
-    scnPts = (Mat_<double>(4,nP) << 0., 0, .0, .4, .4, .4, .8, .8, .8, 1.2, 1.2, 1.2,  
+    /*scnPts = (Mat_<double>(4,nP) << 0., 0, .0, .4, .4, .4, .8, .8, .8, 1.2, 1.2, 1.2,  
                                     0., .4, .8, 0., .4, .8, 0., .4, .8, 0., .4, .8,
                                     0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-                                    1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.);
+                                    1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.);*/
 
  /*   scnPts = (Mat_<double>(4,9) << 0., 0, .0, .4, .4, .4, .8, .8, .8, 
                                    0., .4, .8, 0., .4, .8, 0., .4, .8,  
@@ -118,10 +119,12 @@ imgPts=(Mat_<double>(3, nP) <<P[0].x, P[1].x, P[2].x, P[3].x, P[4].x, P[5].x, P[
                                     1., 1., 1., 1.);*/
 
     //Americas 2
-    /*scnPts = (Mat_<double>(4,nP) << 0., 0, .0, .33, .33, .33, .66, .66, .66, .99, .99, .99,
+    scnPts = (Mat_<double>(4,nP) << 0., 0, .0, .33, .33, .33, .66, .66, .66, .99, .99, .99,
                                    0., .33, .66, 0., .33, .66, 0., .33, .66,  0., .33, .66,
                                    0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 
-                                   1., 1., 1., 1., 1., 1., 1., 1., 1. , 1., 1., 1.);*/
+                                   //0., .33, .66, 0., .33, .66, 0., .33, .66,  0., .33, .66,
+                                   1., 1., 1., 1., 1., 1., 1., 1., 1. , 1., 1., 1.);
+
 
     //Se pasan a metros
     imgPts=K.inv()*imgPts;
@@ -131,7 +134,19 @@ imgPts=(Mat_<double>(3, nP) <<P[0].x, P[1].x, P[2].x, P[3].x, P[4].x, P[5].x, P[
 
     //Invocamos funciones que calcula la ecuación del plano en el marco
     //de referencia de la cámara.
-    getPlaneOrientation2(scnPts, imgPts, N, D);
+    Mat R, T;
+    getPlaneOrientation2(scnPts, imgPts, N, D, R, T);
+    //Construimos la matriz G
+    Size_<int> sizeG(4,4);
+    Mat G(sizeG, R.type());
+    buildG(G, R, T);
+    cout<<endl<<"R: "<<endl<<R<<endl<<"T: "<<endl<<T<<endl<<"G= "<<G<<endl;
+    //Creación de vector de vector de matrices
+    vector<Mat> vMat;
+    int nMat=24;
+    for(int i=0; i<nMat; i++)
+      vMat.push_back((Mat_<double>(4,1)<<0,0,0, 0));//I=icialización
+    //return 0;
     //Se obtiene la linea de fuga
     Point3f vanishingLine;
     getVanishingLine (K, N, vanishingLine);//La linea de fuga es devuelta en m
@@ -149,26 +164,28 @@ imgPts=(Mat_<double>(3, nP) <<P[0].x, P[1].x, P[2].x, P[3].x, P[4].x, P[5].x, P[
    /*PosP posP(-.27, 0.4, .55, .4);
     int cols=4;//4;
     int rows=18;//18;*/
-   PosP posP(-.012136, 0.4, 0.514713 , .4);
+   PosP posP(.0, 0.33, 0.0 , .33);
     int cols=4;//4;
-    int rows=7;//18;
+    int rows=3;//18;
    
-  float z=posP.startZ;
-  float y=0;
+  float y=posP.startZ;
+  float z=0;
   float xTemp, yTemp, zTemp;
   Mat marcas3d, colTemp, marcas2d, center3d, center2d; 
   xTemp=0;
   zTemp=1;
-  yTemp=(D-N.x*xTemp-N.z*zTemp)/N.y;
+//  yTemp=(D-N.x*xTemp-N.z*zTemp)/N.y;
 
   center3d =(Mat_<double>(4,1)<<xTemp,yTemp,zTemp,1);
 
-  for(int i=0; i<rows; i++, z+=posP.skipZ)
+  for(int i=0; i<rows; i++, y+=posP.skipZ)
   {
     float x=posP.startX;
     for(int j=0; j<cols; j++, x+=posP.skipX )
     {
-      y=(D-N.x*x-N.z*z)/N.y;
+      //y=(D-N.x*x-N.z*z)/N.y;
+      //z=(D-N.x*x-N.y*y)/N.z;
+    z=0;
       if(i==0 and j==0)
       {
         marcas3d=(Mat_<double>(4, 1)<<x, y, z, 1);
@@ -181,6 +198,7 @@ imgPts=(Mat_<double>(3, nP) <<P[0].x, P[1].x, P[2].x, P[3].x, P[4].x, P[5].x, P[
     }
   }
   //cout<<"Matriz marcas3d: "<<endl<<marcas3d<<endl;
+  marcas3d=G*scnPts;
   marcas2d=K*dummy*marcas3d;
   center2d=K*dummy*center3d;
 //Deshomoge...
@@ -224,9 +242,11 @@ cout<<endl<<endl<<"Marcas verdes"<<endl;
     for(int i=0; i<8; i++)
     {
         Point3f tempPoint(marcas3d.at<double>(0, i), marcas3d.at<double>(1, i), marcas3d.at<double>(2, i));
+        //Point2f tempPoint(marcas2d.at<double>(0, i), marcas2d.at<double>(1, i));
         cout<<tempPoint<<", "<<endl;
     }
     cout<<endl<<endl;
+    cout<<"Número de marcas verdes: "<<marcas2d.cols<<endl;
     for(;;)
     {
       capture>>frame;
