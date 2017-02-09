@@ -49,13 +49,18 @@ void getPlaneOrientation2 (Mat &scenePts, Mat &imagePts, Point3f &N, double &D, 
         scP.push_back(Point2f(scenePts.at<double>(0,i), scenePts.at<double>(1,i)));
         imP.push_back(Point2f(imagePts.at<double>(0,i), imagePts.at<double>(1,i)));
     }
-    H = findHomography(scP, imP);
+    H = findHomography(scP, imP, CV_LMEDS );
     //H = getPerspectiveTransform (scP, imP);
+    cout<<"H="<<H<<endl;
+    //Mat T2;
+    //T2=H(Rect(2,0,1,3));
+    //cout<<endl<<"T antes de norm="<<T2<<endl;
 
     //Se entiende que la H se puede descomponer como H=[R1,R2, T)
     //Donde R1, y R2, son las dos primeras columnas de la matriz de rotacion
     //y T es el vector de Translación.
     //Primero normalizamos la H, a sabiendas que la norma de R1 debe ser 1.
+    /*
     R1=H(Rect(0,0,1,3));
     n = sqrt(R1.dot(R1));
     assert (n != 0.0);
@@ -74,8 +79,42 @@ void getPlaneOrientation2 (Mat &scenePts, Mat &imagePts, Point3f &N, double &D, 
     hconcat (R1, R2, R2);
     hconcat (R2, R3, R);
     R.copyTo(Rnew);
-    T.copyTo(Tnew);
+    T.copyTo(Tnew);*/
     
+  //G obtenida de: http://dsp.stackexchange.com/questions/1484/how-to-compute-camera-pose-from-homography-matrix
+    Mat pose = Mat::eye(3, 4, CV_64FC1); //3x4 matrix
+    float norm1 = (float)norm(H.col(0)); 
+    float norm2 = (float)norm(H.col(1));
+    float tnorm = (norm1 + norm2) / 2.0f;
+
+    Mat v1 = H.col(0);
+    Mat v2 = pose.col(0);
+
+    cv::normalize(v1, v2); // Normalize the rotation
+
+    v1 = H.col(1);
+    v2 = pose.col(1);
+
+    cv::normalize(v1, v2);
+
+    v1 = pose.col(0);
+    v2 = pose.col(1);
+
+    Mat v3 = v1.cross(v2);  //Computes the cross-product of v1 and v2
+    Mat c2 = pose.col(2);
+    v3.copyTo(c2);      
+
+    pose.col(3) = H.col(2) / tnorm; //vector t [R|t]
+    Mat RTemp;
+    R1=pose(Rect(0,0,1,3));
+    R2=pose(Rect(1,0,1,3));
+    R3=pose(Rect(2,0,1,3));
+    T=pose(Rect(3,0,1,3));
+    hconcat (R1, R2, R2);
+    hconcat (R2, R3, R);
+
+    R.copyTo(Rnew);
+    T.copyTo(Tnew);
 
     //La normal al plano está dada por el eje Z (i.e. [0,0,1]^T) en
     //el marco de referencia del plano, transladado al marco de referencia
@@ -307,6 +346,7 @@ void getMatPointsMouse(Mat& frame, VideoCapture& capture, vector<Point2d>& point
 
     cvNamedWindow("frame2",WINDOW_NORMAL );//WINDOW_NORmaL);//WINDOW_AUTOSIZE );
     capture>>frame;
+    //flip(frame, frame, 1);
 	capturaPuntos("frame2", frame, &P);
 		if(capturaPuntos("frame", frame, &P))//Si es igual a 1 deja de iterar
                   cout<<"Error en la captura!!"<<endl;
@@ -315,21 +355,26 @@ void getMatPointsMouse(Mat& frame, VideoCapture& capture, vector<Point2d>& point
 		//Imprimimos los puntos capturados:
 		if (P.size())
 		{
-		  cout << endl << "Se capturaron los siguientes " << P.size() << " puntos:" << endl << endl
-			   << "P = [";
+		  //cout << endl << "Se capturaron los siguientes " << P.size() << " puntos:" << endl << endl
+		//	   << "P = [";
 		  vector <Point>::iterator ini, end;
 		  ini = P.begin();
 		  end=P.end();		  
-		  for (; (ini+1) != end;++ini)
+		  //for(int i=0; (ini+1) != end;++ini, i++)
+		  for(int i=0; i< P.size(); i++)
 		  {
-			  cout << "(" << ini->x << ", " << ini->y << "), ";
+                      pointsRect[i].x=P[i].x;
+                      pointsRect[i].y=P[i].y;
+                      //cout<<pointsRect[i].x<<" "<<pointsRect[i].y<<"; ";
+			  //cout << "(" << ini->x << ", " << ini->y << "), ";
 			  //myFile<<ini->x<<", "<<ini->y<< "| ";
 		  }
+                  //cout<<"]"<<endl;
 		  //cout << "(" << ini->x << ", " << ini->y << ")]"<< endl;
                    //cout<<"(Mat_<double>(3, 4) <<"<<P[0].x<<", "<<P[1].x<<", "<<P[2].x<<", "<<P[3].x<<", "
                     //                          <<P[0].y<<", "<<P[1].y<<", "<<P[2].y<<", "<<P[3].y<<", "
                      //                         <<"1, 1, 1, 1);"<<endl;
-                   pointsRect[0].x=P[0].x;
+                   /*pointsRect[0].x=P[0].x;
                    pointsRect[0].y=P[0].y;
                    pointsRect[1].x=P[1].x;
                    pointsRect[1].y=P[1].y;
@@ -355,7 +400,7 @@ void getMatPointsMouse(Mat& frame, VideoCapture& capture, vector<Point2d>& point
                    pointsRect[10].x=P[10].x;
                    pointsRect[10].y=P[10].y;
                    pointsRect[11].x=P[11].x;
-                   pointsRect[11].y=P[11].y;
+                   pointsRect[11].y=P[11].y;*/
 //pointsRect[3].y=100;
 
 		  //myFile<<ini->x<<", "<<ini->y<< "| ";
@@ -615,9 +660,9 @@ void getIntersec2(Mat& frame, vector<Point3f*>& vCorners, Point3f& vanishingLine
     vCorners[3]->y=pUR.y*r4Temp;
     vCorners[3]->z=pUR.z*r4Temp;
 
-    cout<<"Posiciones 3d"<<endl;
+    /*cout<<"Posiciones 3d"<<endl;
     for(int i=0; i<vCorners.size(); i++)
-      cout<<*vCorners[i]<<endl;
+      cout<<*vCorners[i]<<endl;*/
 
 }
 void pointsSelect3dTo2D(vector<Point2d>& P, vector<Point2f>& vps2d, Mat& K, Point3f& N, double& D, Mat& dummy)
@@ -667,8 +712,7 @@ void pointsSelect3dTo2D(vector<Point2d>& P, vector<Point2f>& vps2d, Mat& K, Poin
                                 1);
       hconcat(P3DPoints, tempCol2, P3DPoints);
     }
-    cout<<"Puntos 3d seleccionados en el piso:"<<endl<<P3DPoints<<endl;
-
+    cout<<"intersec="<<P3DPoints<<endl;
     P2DPoints=K*dummy*P3DPoints;
     //Deshomoge...
     //cout<<"Posiciones 3d en la imagen"<<endl;

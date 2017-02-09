@@ -19,6 +19,8 @@
 #define IM_HEIGHT_VGA 480
 #define IM_WIDTH_HD 1280
 #define IM_HEIGHT_HD 720
+#define IM_WIDTH_FULLHD 1920
+#define IM_HEIGHT_FULLHD 1080
 
 using namespace std;
 using namespace cv;
@@ -61,70 +63,59 @@ int main(int argc, char **argv)
     Mat K, scnPts, imgPts, RT, dummy, testPoints;
     vector<Point2d>P;
     //P.resize(4);//12 puntos
-    P.push_back(Point2d(0, 0));
-    P.push_back(Point2d(0, 0));
-    P.push_back(Point2d(0, 0));
-    P.push_back(Point2d(0, 0));
+    for(int i=0; i<nP; i++)
+      P.push_back(Point2d(0, 0));
+    setCam(capture);
+    //getMatPointsMouse(frame, capture, P);
+    setP(P);
 
-    P.push_back(Point2d(0, 0));
-    P.push_back(Point2d(0, 0));
-    P.push_back(Point2d(0, 0));
-    P.push_back(Point2d(0, 0));
-
-    P.push_back(Point2d(0, 0));
-    P.push_back(Point2d(0, 0));
-    P.push_back(Point2d(0, 0));
-    P.push_back(Point2d(0, 0));
-
-    getMatPointsMouse(frame, capture, P);
-
-    /*               imgPts=(Mat_<double>(3, 4) <<P[0].x, P[1].x, P[2].x, P[3].x,
-                                              P[0].y, P[1].y, P[2].y, P[3].y,
-                                               1, 1, 1, 1);*/
-imgPts=(Mat_<double>(3, nP) <<P[0].x, P[1].x, P[2].x, P[3].x, P[4].x, P[5].x, P[6].x, P[7].x, P[8].x, P[9].x, P[10].x,  P[11].x,
-                              P[0].y, P[1].y, P[2].y, P[3].y, P[4].y, P[5].y, P[6].y, P[7].y, P[8].y, P[9].y, P[10].y,  P[11].y,
-                              1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+                 imgPts=(Mat_<double>(3, nP) <<P[0].x, P[1].x, P[2].x, P[3].x, P[4].x, P[5].x, P[6].x, P[7].x, P[8].x, P[9].x, P[10].x, P[11].x, 
+                                              P[0].y, P[1].y, P[2].y, P[3].y, P[4].y, P[5].y, P[6].y, P[7].y, P[8].y, P[9].y, P[10].y, P[11].y, 
+                                               1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+    /*imgPts=(Mat_<double>(3, nP) <<815, 800, 780, 754, 957, 959, 957, 959, 1099, 1114, 1134, 1160,
+                                  880, 924, 979, 1054, 878, 927, 979, 1057, 881, 928, 982, 1058,
+                                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1); */
 
     ParamsK pK(616.164, 616.82, 0, 325.528, 228.66);
      K=(Mat_<double>(3, 3)<<pK.fx, pK.gamma, pK.cx, 0, pK.fy,  pK.cy, 0, 0, 1);
     dummy=(Mat_<double>(3, 4)<<1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0);
+    cout<<"K = "<<K<<endl<<"Dummy = "<<dummy<<endl;
 
     Point3f N;
     double D;
     //Definimos 4 puntos que yacen en un plano en el espacio.
-    /*scnPts = (Mat_<double>(4, 4) << 0., 0, .4, .4, 
-                                    0., .4, .4, 0., 
-                                    0., 0., 0., 0., 
-                                    1., 1., 1., 1.);*/
-
-    //CLIR 
-    /*scnPts = (Mat_<double>(4, 4) << 0., 0, .8, .8, 
-                                    0., .8, .8, 0., 
-                                    0., 0., 0., 0., 
-                                    1., 1., 1., 1.);*/
+//getMatPointsMouse(frame, capture, P);
     //CLIR2
     /*scnPts = (Mat_<double>(4,nP) << 0., 0, .0, .4, .4, .4, .8, .8, .8, 1.2, 1.2, 1.2,  
                                     0., .4, .8, 0., .4, .8, 0., .4, .8, 0., .4, .8,
                                     0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
                                     1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.);*/
 
- /*   scnPts = (Mat_<double>(4,9) << 0., 0, .0, .4, .4, .4, .8, .8, .8, 
-                                   0., .4, .8, 0., .4, .8, 0., .4, .8,  
-                                   0., 0., 0., 0., 0., 0., 0., 0., 0., 
-                                   1., 1., 1., 1., 1., 1., 1., 1., 1.);*/
+ /*   scnPts = (Mat_<double>(4, nP) << -.4, -.4, -.4, 0, 0, 0, .4, .4, .4, 
+                                    0., .4, .8, 0., .4, .8, 0., .4, .8,
+                                    0., 0., 0., 0., 0., 0., 0., 0., 0,
+                                    1., 1., 1., 1., 1., 1., 1., 1., 1.);*/
+
+    scnPts = (Mat_<double>(4, nP) << -.4, -.4, -.4, -.4, 0, 0, 0, 0, .4, .4, .4, .4, 
+                                       0., .4, .8, 1.2, 0., .4, .8, 1.2, 0., .4, .8, 1.2,
+                                    0., 0., 0., 0., 0., 0., 0., 0., 0, 0, 0, 0,
+                                    1., 1., 1., 1., 1., 1., 1., 1., 1., 1, 1, 1);
+
     //Americas
-    /*scnPts = (Mat_<double>(4, 4) << 0., 0, .665, .665, 
-                                    0., .665, .665, 0., 
-                                    0., 0., 0., 0., 
-                                    1., 1., 1., 1.);*/
+    /*scnPts = (Mat_<double>(4, nP) << -.3, -.3, -.3, 0, 0, 0, .3, .3, .3, 
+                                    0., .3, .66, 0., .3, .66, 0., .3, .66,
+                                    0., 0., 0., 0., 0., 0., 0., 0., 0,
+                                    1., 1., 1., 1., 1., 1., 1., 1., 1.);*/
 
     //Americas 2
-    scnPts = (Mat_<double>(4,nP) << 0., 0, .0, .33, .33, .33, .66, .66, .66, .99, .99, .99,
+    /*scnPts = (Mat_<double>(4,nP) << 0., 0, .0, .33, .33, .33, .66, .66, .66, .99, .99, .99,
                                    0., .33, .66, 0., .33, .66, 0., .33, .66,  0., .33, .66,
                                    0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 
                                    //0., .33, .66, 0., .33, .66, 0., .33, .66,  0., .33, .66,
-                                   1., 1., 1., 1., 1., 1., 1., 1., 1. , 1., 1., 1.);
+                                   1., 1., 1., 1., 1., 1., 1., 1., 1. , 1., 1., 1.);*/
 
+
+    cout<<"scnPts = "<<scnPts<<endl<<"imgPts="<<imgPts<<endl;
 
     //Se pasan a metros
     imgPts=K.inv()*imgPts;
@@ -140,7 +131,7 @@ imgPts=(Mat_<double>(3, nP) <<P[0].x, P[1].x, P[2].x, P[3].x, P[4].x, P[5].x, P[
     Size_<int> sizeG(4,4);
     Mat G(sizeG, R.type());
     buildG(G, R, T);
-    cout<<endl<<"R: "<<endl<<R<<endl<<"T: "<<endl<<T<<endl<<"G= "<<G<<endl;
+    cout<<endl<<"R= "<<R<<endl<<"T= "<<T<<endl<<"G= "<<G<<endl;
     //Creación de vector de vector de matrices
     vector<Mat> vMat;
     int nMat=24;
@@ -164,7 +155,7 @@ imgPts=(Mat_<double>(3, nP) <<P[0].x, P[1].x, P[2].x, P[3].x, P[4].x, P[5].x, P[
    /*PosP posP(-.27, 0.4, .55, .4);
     int cols=4;//4;
     int rows=18;//18;*/
-   PosP posP(.0, 0.33, 0.0 , .33);
+   PosP posP(.0, 0.4, 0.0 , .4);
     int cols=4;//4;
     int rows=3;//18;
    
@@ -197,10 +188,10 @@ imgPts=(Mat_<double>(3, nP) <<P[0].x, P[1].x, P[2].x, P[3].x, P[4].x, P[5].x, P[
       }
     }
   }
-  //cout<<"Matriz marcas3d: "<<endl<<marcas3d<<endl;
-  marcas3d=G*scnPts;
-  marcas2d=K*dummy*marcas3d;
-  center2d=K*dummy*center3d;
+    //cout<<"Matriz marcas3d: "<<endl<<marcas3d<<endl;
+    marcas3d=G*scnPts;
+    marcas2d=K*dummy*marcas3d;
+    center2d=K*dummy*center3d;
 //Deshomoge...
     center2d(Rect(0, 0, 1, 3)) /= center2d.at<double>(2, 0);
     Point centerP(center2d.at<double>(0,0), center2d.at<double>(1,0));
@@ -208,6 +199,7 @@ imgPts=(Mat_<double>(3, nP) <<P[0].x, P[1].x, P[2].x, P[3].x, P[4].x, P[5].x, P[
     cout<<"Punto central en 3d: "<<center3d<<endl;
     for (int i=0;i<marcas2d.cols;++i)
         marcas2d(Rect(i, 0, 1, 3)) /= marcas2d.at<double>(2, i);
+
   //cout<<"Marcas 2d rows: "<<marcas2d.rows<<endl<<"cols: "<<marcas2d.cols<<endl;
 
     Point3f cornerTL, cornerTR, cornerBL, cornerBR;
@@ -228,9 +220,7 @@ imgPts=(Mat_<double>(3, nP) <<P[0].x, P[1].x, P[2].x, P[3].x, P[4].x, P[5].x, P[
     points3dTo2d(vCorners, K, dummy, vCorners2D);//Convierte el vector de las intersecciones de 3d a 2d para visualización
     vector<Point2f>vps2d;
     for(int i=0; i<nP; i++)
-    {
       vps2d.push_back(Point2f(0,0));
-    }
     pointsSelect3dTo2D(P, vps2d, K, N, D, dummy);//Con los puntos seleccionados con el mouse se halla la intersección en el plano y se proyectan en 2D
 
         //Point tempPoint(P2DCorner.at<double>(0, 0), P2DCorner.at<double>(1, 0));
@@ -246,10 +236,11 @@ cout<<endl<<endl<<"Marcas verdes"<<endl;
         cout<<tempPoint<<", "<<endl;
     }
     cout<<endl<<endl;
-    cout<<"Número de marcas verdes: "<<marcas2d.cols<<endl;
+    //cout<<"Número de marcas verdes: "<<marcas2d.cols<<endl;
     for(;;)
     {
       capture>>frame;
+      //flip(frameLine, frameLine, 1);
       for(int j=0; j<marcas2d.cols; j++)
       {
         drawLine(frame, vanishingLine, colors[0]);
@@ -265,6 +256,7 @@ cout<<endl<<endl<<"Marcas verdes"<<endl;
     
       imshow("frame", frame);
       key=waitKey(1);
+      if(key=='q') break;
     }
 
     /*
