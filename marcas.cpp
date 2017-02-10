@@ -1,3 +1,4 @@
+//Dismensiones del tablero 12x12cm
 #include <iostream> 
 #include <cstdlib>
 #include <pthread.h>
@@ -34,6 +35,8 @@ int main(int argc, char **argv)
   VideoCapture capture;
   char key; 
   int nP=12;//número de puntos
+  int fils=8;
+  int cols=6;
     //*************Cámara**********
     cvNamedWindow("frame",WINDOW_NORMAL );//WINDOW_NORMAL);//WINDOW_AUTOSIZE );
     //VideoCapture capture;
@@ -60,18 +63,50 @@ int main(int argc, char **argv)
     capture.set(CV_CAP_PROP_FRAME_HEIGHT,480);
     #endif
 
-    Mat K, scnPts, imgPts, RT, dummy, testPoints;
+    Mat K, scnPts, imgPts, RT, dummy, testPoints, I, Corners, Icol;
     vector<Point2d>P;
-    //P.resize(4);//12 puntos
-    for(int i=0; i<nP; i++)
-      P.push_back(Point2d(0, 0));
-    setCam(capture);
-    //getMatPointsMouse(frame, capture, P);
-    setP(P);
+    //for(int i=0; i<nP; i++)
+      //P.push_back(Point2d(0, 0));
+    Icol=imread(argv[1],1);
+    cvtColor(Icol, I, CV_RGB2GRAY);
+    cvNamedWindow("chessboard",WINDOW_NORMAL );
+    if(findChessboardCorners(I, Size(cols, fils), Corners))
+    {
+            cornerSubPix(I, Corners, Size(10,10) , Size(-1,-1), TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
+            for (int j = 0; j < Corners.rows; ++j)
+            {
+                Vec2f *apuv = Corners.ptr<Vec2f>(j);
+                circle(Icol, Point((*apuv)[0], (*apuv)[1]) , 5,  Scalar_ <uchar> (255,64,255), 3);
+                P.push_back(Point2d((*apuv)[0], (*apuv)[1]));
+                stringstream textTemp;
+                textTemp<<j;
+                putText(Icol,textTemp.str(),  Point((*apuv)[0], (*apuv)[1]),FONT_HERSHEY_COMPLEX_SMALL,1,CV_RGB(0, 255, 0),2 );
+            }
 
-                 imgPts=(Mat_<double>(3, nP) <<P[0].x, P[1].x, P[2].x, P[3].x, P[4].x, P[5].x, P[6].x, P[7].x, P[8].x, P[9].x, P[10].x, P[11].x, 
-                                              P[0].y, P[1].y, P[2].y, P[3].y, P[4].y, P[5].y, P[6].y, P[7].y, P[8].y, P[9].y, P[10].y, P[11].y, 
-                                               1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+            imshow("chessboard", Icol);
+            waitKey(0);
+    }
+    
+    //setCam(capture);
+    //getMatPointsMouse(frame, capture, P);
+    //setP(P);
+    //Se crea la matriz con los puntos detectados del tablero automaticamente
+    imgPts=(Mat_<double>(3,1)<<P[0].x,
+                                P[0].y,
+                                1);
+    for(int i=1; i<Corners.rows; i++)
+    {
+      Mat temp=(Mat_<double>(3,1)<<P[i].x,
+                                  P[i].y,
+                                  1);
+      hconcat(imgPts,temp,imgPts);
+    }
+    cout<<"imgPts = "<<endl<<imgPts<<endl;
+    return 0;
+            /*imgPts=(Mat_<double>(3, nP) <<P[0].x, P[1].x, P[2].x, P[3].x, P[4].x, P[5].x, P[6].x, P[7].x, P[8].x, P[9].x, P[10].x, P[11].x, 
+                                          P[0].y, P[1].y, P[2].y, P[3].y, P[4].y, P[5].y, P[6].y, P[7].y, P[8].y, P[9].y, P[10].y, P[11].y, 
+                                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);*/
+
     /*imgPts=(Mat_<double>(3, nP) <<815, 800, 780, 754, 957, 959, 957, 959, 1099, 1114, 1134, 1160,
                                   880, 924, 979, 1054, 878, 927, 979, 1057, 881, 928, 982, 1058,
                                   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1); */
