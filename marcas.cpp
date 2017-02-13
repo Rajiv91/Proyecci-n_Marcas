@@ -1,4 +1,4 @@
-//Dismensiones del tablero 12x12cm
+//Dimensiones del tablero 12x12cm
 #include <iostream> 
 #include <cstdlib>
 #include <pthread.h>
@@ -29,18 +29,15 @@ using namespace cv;
 int main(int argc, char **argv)
 {
 
-
 //****************Cámara****
   Mat frame;
   VideoCapture capture;
   char key; 
-  int nP=12;//número de puntos
-  int fils=8;
-  int cols=6;
+  int filsGrid=8;
+  int colsGrid=6;
+  int nP=filsGrid*colsGrid;//número de puntos
     //*************Cámara**********
     cvNamedWindow("frame",WINDOW_NORMAL );//WINDOW_NORMAL);//WINDOW_AUTOSIZE );
-    //VideoCapture capture;
-    //Mat frame;
     if (!capture.open(1))
     {
       cout<<"no pudo abrir la camara, se usara la webcam integrada"<<endl; //si no se puede acceder a la cámara USB usa la webcam de la laptop
@@ -63,14 +60,14 @@ int main(int argc, char **argv)
     capture.set(CV_CAP_PROP_FRAME_HEIGHT,480);
     #endif
 
+    setCam(capture);//Se alinea la cámara con el tablero
     Mat K, scnPts, imgPts, RT, dummy, testPoints, I, Corners, Icol;
     vector<Point2d>P;
-    //for(int i=0; i<nP; i++)
-      //P.push_back(Point2d(0, 0));
-    Icol=imread(argv[1],1);
+    capture>>Icol;//Se captura el tablero para encontrar las intersecciones
+    //Icol=imread(argv[1],1);
     cvtColor(Icol, I, CV_RGB2GRAY);
     cvNamedWindow("chessboard",WINDOW_NORMAL );
-    if(findChessboardCorners(I, Size(cols, fils), Corners))
+    if(findChessboardCorners(I, Size(colsGrid, filsGrid), Corners))
     {
             cornerSubPix(I, Corners, Size(10,10) , Size(-1,-1), TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
             for (int j = 0; j < Corners.rows; ++j)
@@ -82,14 +79,16 @@ int main(int argc, char **argv)
                 textTemp<<j;
                 putText(Icol,textTemp.str(),  Point((*apuv)[0], (*apuv)[1]),FONT_HERSHEY_COMPLEX_SMALL,1,CV_RGB(0, 255, 0),2 );
             }
-
             imshow("chessboard", Icol);
-            waitKey(0);
+      cout<<"Se encontaron "<<P.size()<<" intersecciones"<<endl;
+      waitKey(0);
+    }
+    else
+    {
+      cout<<"No se encontraron intersecciones!!"<<endl;
+      exit(0);
     }
     
-    //setCam(capture);
-    //getMatPointsMouse(frame, capture, P);
-    //setP(P);
     //Se crea la matriz con los puntos detectados del tablero automaticamente
     imgPts=(Mat_<double>(3,1)<<P[0].x,
                                 P[0].y,
@@ -101,16 +100,31 @@ int main(int argc, char **argv)
                                   1);
       hconcat(imgPts,temp,imgPts);
     }
-    cout<<"imgPts = "<<endl<<imgPts<<endl;
+    //cout<<"imgPts = "<<endl<<imgPts<<endl;
+    float startX3d, startY3d;
+    startX3d=startY3d=0;
+    float x3d=startX3d;
+    float y3d=startY3d;
+    float skipX3d, skipY3d;
+    skipX3d=skipY3d=.12;
+    y3d=startY3d;
+    //Armamos la matriz con los puntos 3d
+    for(int i=0 ; i<filsGrid; i++, y3d+=skipY3d)
+    {
+      x3d=startX3d;
+      for(int j=0 ; j<colsGrid; j++, x3d+=skipX3d)
+      {
+        if(i==0 and j==0)
+          scnPts = (Mat_<double>(4,1) << x3d,y3d, 0, 1);
+        else
+        {  
+          Mat temp=(Mat_<double>(4,1)<<x3d, y3d, 0, 1);
+          hconcat(scnPts, temp, scnPts);
+        }
+      }
+    }
+    //cout<<"scnPts = "<<endl<<scnPts<<endl;
     return 0;
-            /*imgPts=(Mat_<double>(3, nP) <<P[0].x, P[1].x, P[2].x, P[3].x, P[4].x, P[5].x, P[6].x, P[7].x, P[8].x, P[9].x, P[10].x, P[11].x, 
-                                          P[0].y, P[1].y, P[2].y, P[3].y, P[4].y, P[5].y, P[6].y, P[7].y, P[8].y, P[9].y, P[10].y, P[11].y, 
-                                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);*/
-
-    /*imgPts=(Mat_<double>(3, nP) <<815, 800, 780, 754, 957, 959, 957, 959, 1099, 1114, 1134, 1160,
-                                  880, 924, 979, 1054, 878, 927, 979, 1057, 881, 928, 982, 1058,
-                                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1); */
-
     ParamsK pK(616.164, 616.82, 0, 325.528, 228.66);
      K=(Mat_<double>(3, 3)<<pK.fx, pK.gamma, pK.cx, 0, pK.fy,  pK.cy, 0, 0, 1);
     dummy=(Mat_<double>(3, 4)<<1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0);
@@ -118,39 +132,7 @@ int main(int argc, char **argv)
 
     Point3f N;
     double D;
-    //Definimos 4 puntos que yacen en un plano en el espacio.
-//getMatPointsMouse(frame, capture, P);
-    //CLIR2
-    /*scnPts = (Mat_<double>(4,nP) << 0., 0, .0, .4, .4, .4, .8, .8, .8, 1.2, 1.2, 1.2,  
-                                    0., .4, .8, 0., .4, .8, 0., .4, .8, 0., .4, .8,
-                                    0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-                                    1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.);*/
-
- /*   scnPts = (Mat_<double>(4, nP) << -.4, -.4, -.4, 0, 0, 0, .4, .4, .4, 
-                                    0., .4, .8, 0., .4, .8, 0., .4, .8,
-                                    0., 0., 0., 0., 0., 0., 0., 0., 0,
-                                    1., 1., 1., 1., 1., 1., 1., 1., 1.);*/
-
-    scnPts = (Mat_<double>(4, nP) << -.4, -.4, -.4, -.4, 0, 0, 0, 0, .4, .4, .4, .4, 
-                                       0., .4, .8, 1.2, 0., .4, .8, 1.2, 0., .4, .8, 1.2,
-                                    0., 0., 0., 0., 0., 0., 0., 0., 0, 0, 0, 0,
-                                    1., 1., 1., 1., 1., 1., 1., 1., 1., 1, 1, 1);
-
-    //Americas
-    /*scnPts = (Mat_<double>(4, nP) << -.3, -.3, -.3, 0, 0, 0, .3, .3, .3, 
-                                    0., .3, .66, 0., .3, .66, 0., .3, .66,
-                                    0., 0., 0., 0., 0., 0., 0., 0., 0,
-                                    1., 1., 1., 1., 1., 1., 1., 1., 1.);*/
-
-    //Americas 2
-    /*scnPts = (Mat_<double>(4,nP) << 0., 0, .0, .33, .33, .33, .66, .66, .66, .99, .99, .99,
-                                   0., .33, .66, 0., .33, .66, 0., .33, .66,  0., .33, .66,
-                                   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 
-                                   //0., .33, .66, 0., .33, .66, 0., .33, .66,  0., .33, .66,
-                                   1., 1., 1., 1., 1., 1., 1., 1., 1. , 1., 1., 1.);*/
-
-
-    cout<<"scnPts = "<<scnPts<<endl<<"imgPts="<<imgPts<<endl;
+    //cout<<"scnPts = "<<scnPts<<endl<<"imgPts="<<imgPts<<endl;
 
     //Se pasan a metros
     imgPts=K.inv()*imgPts;
@@ -167,12 +149,6 @@ int main(int argc, char **argv)
     Mat G(sizeG, R.type());
     buildG(G, R, T);
     cout<<endl<<"R= "<<R<<endl<<"T= "<<T<<endl<<"G= "<<G<<endl;
-    //Creación de vector de vector de matrices
-    vector<Mat> vMat;
-    int nMat=24;
-    for(int i=0; i<nMat; i++)
-      vMat.push_back((Mat_<double>(4,1)<<0,0,0, 0));//I=icialización
-    //return 0;
     //Se obtiene la linea de fuga
     Point3f vanishingLine;
     getVanishingLine (K, N, vanishingLine);//La linea de fuga es devuelta en m
@@ -185,12 +161,7 @@ int main(int argc, char **argv)
     cout << "N = " << N << endl;
     cout << "D = " << D << endl;
 
-   //PosP posP(0.0, 0.3, .0, .3);//En x y z, desde donde y el tamaño de los saltos en pix
-   //PosP posP(0.0, 0.332, 0, .332);
-   /*PosP posP(-.27, 0.4, .55, .4);
-    int cols=4;//4;
-    int rows=18;//18;*/
-   PosP posP(.0, 0.4, 0.0 , .4);
+   PosP posP(.0, 0.12, 0.0 , .12);
     int cols=4;//4;
     int rows=3;//18;
    
@@ -286,7 +257,7 @@ cout<<endl<<endl<<"Marcas verdes"<<endl;
 
         Point tempPoint(marcas2d.at<double>(0, j), marcas2d.at<double>(1, j));
         circle(frame, tempPoint,5, Scalar(0, 200, 0) ,10);
-        circle(frame, centerP,5, Scalar(200, 200, 200) ,10);//Punto central de la cámara
+        //circle(frame, centerP,5, Scalar(200, 200, 200) ,10);//Punto central de la cámara
       }
     
       imshow("frame", frame);
@@ -294,14 +265,6 @@ cout<<endl<<endl<<"Marcas verdes"<<endl;
       if(key=='q') break;
     }
 
-    /*
-    for(int i=0; i<marcas2d.rows(); i++)
-    {
-      for(int j=0; j<marcas2d.cols(); j++)
-      {
-        
-      }
-    }*/
 
   return 0;
 }
